@@ -7,25 +7,23 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
-from dotenv import load_dotenv
 
 # ============================================================
-# 💡 Załaduj dane logowania z pliku .env
+# 💡 Dane logowania z Environment Variables (Render)
 # ============================================================
-load_dotenv()
-PHONE = os.getenv("PHONE")      # numer telefonu do logowania
-PASSWORD = os.getenv("PASSWORD")  # hasło do konta
+PHONE = os.getenv("PHONE")
+PASSWORD = os.getenv("PASSWORD")
 
 # ============================================================
-# 📋 Wczytaj listy grup i postów (z separatorami ---)
+# 📋 Wczytywanie list grup i postów (oddzielonych przez ---)
 # ============================================================
 def load_data():
     """Wczytuje listy grup i postów z plików tekstowych"""
-    # wczytaj grupy
+    # Wczytaj grupy (po jednej w linii)
     with open("groups.txt", "r", encoding="utf-8") as g:
         groups = [line.strip() for line in g.readlines() if line.strip()]
 
-    # wczytaj posty – każdy blok oddzielony przez ---
+    # Wczytaj posty (oddzielone przez ---)
     with open("posts.txt", "r", encoding="utf-8") as p:
         content = p.read()
         posts = [post.strip() for post in content.split('---') if post.strip()]
@@ -33,27 +31,28 @@ def load_data():
     return groups, posts
 
 # ============================================================
-# ⚙️ Konfiguracja przeglądarki Chrome w trybie headless
+# ⚙️ Konfiguracja przeglądarki Chrome w środowisku Render
 # ============================================================
 def create_driver():
-    """Tworzy przeglądarkę Chrome w trybie headless (bez GUI)"""
+    """Tworzy przeglądarkę Chrome w trybie headless na Render"""
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # tryb bez GUI
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
 
-    service = Service()
+    service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
 # ============================================================
-# 🔐 Logowanie do Facebooka za pomocą numeru telefonu
+# 🔐 Logowanie do Facebooka przez numer telefonu
 # ============================================================
 def facebook_login(driver):
-    """Loguje się na Facebooka przy użyciu numeru telefonu"""
+    """Loguje się do Facebooka przy użyciu numeru telefonu"""
     driver.get("https://www.facebook.com/login")
     time.sleep(random.uniform(3, 5))
 
@@ -74,7 +73,7 @@ def facebook_login(driver):
         print(f"❌ Błąd podczas logowania: {e}")
 
 # ============================================================
-# 📝 Publikacja posta w danej grupie
+# 📝 Publikacja posta w grupie
 # ============================================================
 def post_to_group(driver, group_url, post_text):
     """Publikuje pojedynczy post w danej grupie"""
@@ -83,14 +82,13 @@ def post_to_group(driver, group_url, post_text):
     time.sleep(random.uniform(4, 6))
 
     try:
-        # Znajdź pole do wpisania posta (Facebook często zmienia selektory)
         post_box = driver.find_element(By.XPATH, "//div[@role='textbox']")
         post_box.click()
         time.sleep(random.uniform(2, 4))
         post_box.send_keys(post_text)
         time.sleep(random.uniform(2, 4))
 
-        # Symuluj kliknięcie Enter (lub kombinację CTRL+Enter)
+        # Symulacja publikacji (CTRL+ENTER)
         post_box.send_keys(Keys.CONTROL, Keys.ENTER)
         time.sleep(random.uniform(3, 5))
         print("✅ Post opublikowany pomyślnie!\n")
@@ -101,7 +99,7 @@ def post_to_group(driver, group_url, post_text):
 # 🔁 Główna logika publikacji
 # ============================================================
 def main():
-    """Główna funkcja cyklu publikacji"""
+    """Główna funkcja bota"""
     print("\n============================")
     print("🔄 Rozpoczynam cykl publikacji...")
     print("============================\n")
@@ -110,11 +108,10 @@ def main():
     driver = create_driver()
     facebook_login(driver)
 
-    # Dopasuj posty do grup 1:1
     for i in range(min(len(groups), len(posts))):
         print(f"➡️  Post {i+1}/{len(posts)}")
         post_to_group(driver, groups[i], posts[i])
-        time.sleep(random.uniform(3, 6))  # realistyczne opóźnienia
+        time.sleep(random.uniform(3, 6))
 
     driver.quit()
     print("\n✅ Wszystkie posty zostały opublikowane!\n")
@@ -124,10 +121,10 @@ def main():
 # ============================================================
 schedule.every(2).hours.do(main)
 
-# Uruchom pierwszy raz od razu
+# Uruchom pierwszy cykl od razu
 main()
 
-# Pętla działania (ciągła praca bota)
+# Pętla działania (Render utrzymuje proces w tle)
 while True:
     schedule.run_pending()
     time.sleep(10)
